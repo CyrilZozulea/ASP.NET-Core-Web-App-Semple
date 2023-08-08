@@ -1,0 +1,108 @@
+﻿@{
+    Layout = "_Layout";
+    ViewData["Title"] = "jQuery - exapmle";
+}
+
+<div class="container mt-3">
+    <button type="button" class="btn btn-success mb-3" id="add" data-bs-toggle="modal" data-bs-target="#modelview"><i class="p-1 bi bi-plus-lg"></i>Add</button>
+    <table id="jquery_table" class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th></th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $("#add").on("click", function () {
+                $.ajax({
+                    type: "GET",
+                    url: "/jQuery/UpdateTable",
+                    contentType: false,
+                    cache: false,
+                    success: function (response) {
+                        $(".modal-dialog").html(response);
+                    },
+                    error: function () {
+                        $("#modelview").modal('hide');
+                    }
+                });
+            });
+
+            $("#jquery_table").DataTable({
+                "processing": true,
+                "ajax": {
+                    "url": "/jQuery/LoadDatatable",
+                    "type": "POST",
+                    "datatype": "json",
+                    "dataSrc": function (response) {
+                        if (response.errorCode == 2) {
+                            console.error(response.result);
+                        }
+                        else if (response.errorCode == 1) {
+                            console.warn(response.result);
+                        }
+
+                        return response.data;
+                    }
+                },
+                "columns": [
+                    { "data": "id", "name": "ID", "autoWidth": true },
+                    { "data": "name", "name": "Name", "autoWidth": true },
+                    { "data": "email", "name": "Email", "autoWidth": true },
+                    {
+                        "width": "50",
+                        "orderable": false,
+                        "render": function (data, type, row, meta) {
+                            return "<div class='d-flex flex-row'><a type='button' id='edit' data-id='" + row.id + "' class='bd-highlight px-1' data-bs-toggle='modal' data-bs-target='#modelview'><i class='bi bi-pen' style='font-size: 20px;'></i></a>" +
+                                "<a id='delete' data-id='" + row.id + "' class='bd-highlight px-1'><i class='bi bi-trash' style='font-size: 20px; color: red;'></i></a></div>";
+                        },
+                    },
+                ],
+            });
+
+
+            $("#jquery_table tbody").on("click", "#edit", function () {
+                var id = $(this).attr("data-id");
+                $.ajax({
+                    type: "GET",
+                    url: "/jQuery/UpdateTable" + "/" + id,
+                    success: function (response) {
+                        $(".modal-dialog").html(response);
+                    },
+                    error: function () {
+                        $("#modelview").modal('hide');
+                    }
+                });
+            });
+
+            $("#jquery_table tbody").on("click", "#delete", function () {
+                var id = $(this).attr("data-id");
+                $.ajax({
+                    type: "GET",
+                    url: "/jQuery/DeleteObject" + "/" + id,
+                    success: function (response) {
+                        if (response.errorCode == 2) {
+                            console.error(response.result);
+                        }
+                        else if (response.errorCode == 1) {
+                            console.warn(response.result);
+                        }
+                        
+                        $("#jquery_table").DataTable().ajax.reload();
+                    },
+                    error: function () {
+                        console.error(response.result);
+                        $("#jquery_table").DataTable().ajax.reload();
+                    }
+                });
+            });
+        });
+    </script>
+}

@@ -1,0 +1,89 @@
+﻿@model ApplicationBLL.Models.jQueryModel;
+
+<div id="partialView">
+    <div class="modal-content">
+        <form id="upsert_form">
+            <input type="text" hidden id="id" value="@Model.ID">
+            <div class="modal-header">
+                <h5 class="modal-title">UpsertTable</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row"> 
+                    <div class="col">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="nameID" name="name" placeholder="Enter name" value="@Model.Name">
+                    </div>
+                    <div class="col">
+                        <label class="form-label">Email</label>
+                        <input type="text" class="form-control" id="emailID" name="email" placeholder="Enter email" value="@Model.Email">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="5" id="descriptionID" placeholder="Enter description" style="resize:none;">@Model.Description</textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-success">Save</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        $.validator.addMethod('emailValidation', function (value) {
+            var regex = /^([a-zA-Z0-9_.+-])+\@@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+            return regex.test(value);
+        }, 'Email is invalid!');
+
+        $("#upsert_form").validate({
+            rules: {
+                name: {
+                    required: true,
+                    maxlength: 50
+                },
+                email: {
+                    required: true,
+                    emailValidation: true,
+                    maxlength: 50
+                },
+            }
+        });
+
+        $("#upsert_form").on("submit", function (event) {
+            if ($("#upsert_form").valid()){
+                var data = {
+                    "ID": $("#id").val(),
+                    "Name": $("#nameID").val(),
+                    "Email": $("#emailID").val(),
+                    "Description": $("#descriptionID").val()
+                };
+
+                $.ajax({
+                    type: "POST",
+                    async: false,
+                    url: "/jQuery/UpdateTable",
+                    dataType: "json",
+                    data: JSON.stringify(data),
+                    contentType: "application/json",
+                    success: function (data) {
+                        if (data.errorCode == 2) {
+                            console.error(data.result);
+                        }
+                        else if (data.errorCode == 1) {
+                            console.warn(data.result);
+                        }
+
+                        $("#jquery_table").DataTable().ajax.reload();
+                        $("#modelview").modal('hide');
+                    },
+                    error: function (data) {
+                        $("#modelview").modal('hide');
+                        console.warn(data.result);
+                    }
+                });
+            }
+        });
+    </script>
+</div>

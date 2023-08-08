@@ -1,0 +1,181 @@
+﻿@using ApplicationBLL.Models;
+@using Application.Controllers;
+@using ApplicationBLL.Database;
+@using BlazorBootstrap;
+@using Views.Blazor.Helpers;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+
+@inject IJSRuntime JsRuntime;
+@inject ILogger<Table> logger;
+@inject NavigationManager uriHelper;
+
+<div class="container mt-3" >
+    <div class="row">
+        <div class="col-9">
+            <button type="button" class="btn btn-success mb-3" @onclick="Add" id="add"><i class="p-1 bi bi-plus-lg"></i>Add</button>
+        </div>
+        <div class="col">
+            <div class="d-flex">
+                <input type="text" class="form-control" placeholder="Search..." @bind-value="SeacthResult" @oninput="OnSearch" />
+                <i style="margin-left:-35px;" class="p-2 bi bi-x-lg @ClearButtonState" @onclick="OnClear"></i>
+            </div>
+        </div>
+    </div>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!TableHelper.DynamicList.Equals(null) && !TableHelper.DynamicList.Count.Equals(0))
+            {
+                foreach (var item in TableHelper.DynamicList)
+                {
+                    if (TableHelper.DynamicList.IndexOf(item) < TableHelper.MaxCount)
+                    {
+                        <tr>
+                            <td width="100">@item.ID</td>
+                            <td width="500">@item.Name</td>
+                            <td><span style="margin-left:10px;">@item.Type</span></td>
+                            <td width="60">
+                                <div class='d-flex flex-row'>
+                                    <a @onclick="()=>Edit(item.ID)" class="d-flex flex-row px-1"><i class="bi bi-pen" style="font-size: 20px;"></i></a>
+                                    <a @onclick="()=>Delete(item.ID)" class="d-flex flex-row px-1"><i class="bi bi-trash" style="font-size: 20px; color: red;"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            }
+            else
+            {
+                Message = "Not exist";
+            }
+        </tbody>
+    </table>
+    @if (TableHelper.DynamicList.Count.Equals(0))
+    {
+        <p style="text-align:center"><b>@Message</b></p>
+    }
+
+    @if (TableHelper.StaticList.Count > 10)
+    {
+        <div class="d-flex float-end">
+            @if (TableHelper.PageNumber > 1)
+            {
+                <button type="button" class="btn btn-secondary btn-sm" @onclick="Back">Back</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-secondary btn-sm" disabled>Back</button>
+            }
+            <h5 class="px-2 mt-1">@TableHelper.PageNumber</h5>
+            @if (TableHelper.DynamicList.Count.Equals(10))
+            {
+                <button type="button" class="btn btn-primary btn-sm" @onclick="Next">Next</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-primary btn-sm" disabled>Next</button>
+            }
+        </div>
+    }
+</div>
+
+@*Update table modal*@
+<Modal @ref="modal" Size="ModalSize.Large" />
+
+@code {
+    private string? Message { get; set; }
+    public string SeacthResult { get; set; }
+    [Parameter] public string ClearButtonState { get; set; } = "invisible";
+
+    private Modal modal = default!;
+    private TableHalper TableHelper = new TableHalper();
+    private BlazorDatabase Database = new BlazorDatabase();
+
+    private async void Add()
+    {
+        var parameters = new Dictionary<string, object>();
+        parameters.Add("ID", 0);
+
+        await modal.ShowAsync<UpdateTable>(title: "Update table", parameters: parameters);
+    }
+
+    private async void Edit(int id)
+    {
+        var parameters = new Dictionary<string, object>();
+        parameters.Add("ID", id);
+
+        await modal.ShowAsync<UpdateTable>(title: "Edit modal", parameters: parameters);
+    }
+
+    private async void Delete(int id)
+    {
+        var response = await Database.Delete(id);
+
+        if (response.ErrorCode.Equals(ProjectCore.EnErrorCode.OK))
+        {
+            logger.LogInformation($"Deleting element by id:{id} is seccessful");
+            uriHelper.NavigateTo(uriHelper.Uri, forceLoad: true);
+        }
+        else
+        {
+            logger.LogError($"Deleting element by {id} is failed / Response -> ErrorCode : {(int)response.ErrorCode} | Message: {response.ErrorMessage}");
+            await JsRuntime.InvokeVoidAsync("console.error", $"ErrorCode : {(int)response.ErrorCode} | Message: {response.ErrorMessage}");            
+        }
+    }
+
+    private void Next() => TableHelper.NextPage();
+
+    private void Back() => TableHelper.BackPage();
+
+    private void OnSearch(ChangeEventArgs args)
+    {
+        string text = args.Value.ToString();
+
+        if (string.IsNullOrEmpty(text))
+        {
+            ClearButtonState = "invisible";
+            TableHelper.GetLastPage();
+        }
+        else
+        {
+            TableHelper.DynamicList = TableHelper.StaticList.Where(list => list.Name.Contains(text)).ToList();
+            ClearButtonState = "visible";
+
+            if (TableHelper.DynamicList.Count.Equals(0))
+                Message = "Not found";
+        }
+    }
+
+    private void OnClear()
+    {
+        SeacthResult = "";
+        ClearButtonState = "invisible";
+
+        TableHelper.GetLastPage();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        var response = await Database.GetAll();
+
+        if (response.ErrorCode.Equals(ProjectCore.EnErrorCode.OK))
+        {
+            TableHelper.ConfigureHelper(response.ResponseObject as List<BlazorModel>);
+            logger.LogInformation("Get all elements is successful");
+        }
+        else
+        {
+            Message = $"{response.ErrorCode}";
+            logger.LogError($"Get all elements is failed / Response -> ErrorCode : {(int)response.ErrorCode} | Message: {response.ErrorMessage}");
+        }
+    }
+}
