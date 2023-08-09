@@ -4,14 +4,14 @@ namespace ProjectCore
 {
     public interface ICrudInterface
     {
-        public abstract Task<GlobalGetResponse> GetOne(int id);
+        Task<GlobalGetResponse> GetOne(int id);
 
-        public abstract Task<GlobalGetResponse> GetAll();
+        Task<GlobalGetResponse> GetAll();
 
-        public abstract Task<GlobalPostResponse> Create(object model);
+        Task<GlobalPostResponse> Create(object model);
 
-        public abstract Task<GlobalPostResponse> Edit(object model);
+        Task<GlobalPostResponse> Edit(object model);
 
-        public abstract Task<GlobalGetResponse> Delete(int id);
+        Task<GlobalGetResponse> Delete(int id);
     }
 }
